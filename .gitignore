@@ -1,65 +1,17 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.pyo
-*.pyd
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-eggs/
-parts/
-var/
-sdist/
-develop-eggs/
-.installed.cfg
-lib/
-lib64/
-.eggs/
 
 # Virtuelle Umgebungen
 .venv/
 venv/
-env/
-ENV/
-.env
 
-# Verteilung / Paketierung
-*.whl
-MANIFEST
-
-# Unit-Tests
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
+# Linter / Tests
+.ruff_cache/
 .pytest_cache/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre_Typüberprüfung
-.pyre/
-
-# PyInstaller
-*.spec.bak
+# JavaScript
+node_modules/
 
 # Protokolle
 *.log
@@ -69,12 +21,12 @@ dmypy.json
 Thumbs.db
 desktop.ini
 
-# VS Code (nur nutzerspezifische Dateien ignorieren, geteilte Settings tracken)
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
+# Semgrep
+.semgrep/
+.semgrep
 
-# Credentials / Schlüsseldateien
-deploy/update.key
-*.key
+# Editor
+.vscode/
+
+# Claude Code
+.claude/
