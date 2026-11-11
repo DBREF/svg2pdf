@@ -1,0 +1,8 @@
+{
+	"include": ["svg2pdf.py"],
+	"venvPath": ".",
+	"venv": ".venv",
+	"pythonVersion": "3.15",
+	"pythonPlatform": "Windows",
+	"typeCheckingMode": "standard"
+}

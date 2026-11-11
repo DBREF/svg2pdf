@@ -2,12 +2,15 @@
 
 Eigenständiges Kommandozeilenwerkzeug zur Stapelkonvertierung von SVG- in PDF-Dateien (svglib → ReportLab) mit Multiprocessing. Ausgelegt für Windows.
 
-| Pfad / Datei       | Inhalt                                                                |
-| ------------------ | --------------------------------------------------------------------- |
-| `svg2pdf.py`       | Konverter – gesamter Quelltext                                        |
-| `svg2pdf_run.bat`  | Interaktiver Aufruf unter Windows (fragt Ordner, Datum und Worker ab) |
-| `requirements.txt` | Python-Abhängigkeiten (`reportlab`, `svglib`)                         |
-| `biome.json`       | Linter und Formatierer für Markdown/JSON (Biome, Standardregeln)      |
+| Pfad / Datei           | Inhalt                                                                   |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `svg2pdf.py`           | Konverter – gesamter Quelltext                                           |
+| `svg2pdf_run.bat`      | Interaktiver Aufruf unter Windows (fragt Ordner, Datum und Worker ab)    |
+| `requirements.txt`     | Python-Abhängigkeiten (`reportlab`, `svglib`)                            |
+| `requirements-dev.txt` | Entwicklungswerkzeuge (Ruff, Pyright) mit festen Versionen wie in der CI |
+| `pyrightconfig.json`   | Typprüfung mit Pyright (Stufe `standard`)                                |
+| `biome.json`           | Linter und Formatierer für Markdown/JSON (Biome, Standardregeln)         |
+| `.github/workflows/`   | Prüfstrecke für Pull Requests (Ruff, Biome, Pyright)                     |
 
 ## Funktionen
 
@@ -24,18 +27,19 @@ Voraussetzung: **Python 3.12 oder neuer** (entwickelt mit 3.15). Der Datumsfilte
 
 ```powershell
 py -3.15 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt       # nur zum Konvertieren
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # zum Entwickeln (enthält requirements.txt)
 ```
 
-Geprüft und formatiert wird mit [Ruff](https://docs.astral.sh/ruff/) für Python und [Biome](https://biomejs.dev/) für Markdown/JSON (in VS Code über die jeweiligen Erweiterungen). Von der Kommandozeile, ohne Installation im Repository:
+Geprüft und formatiert wird mit [Ruff](https://docs.astral.sh/ruff/) für Python, [Pyright](https://microsoft.github.io/pyright/) für die Typprüfung und [Biome](https://biomejs.dev/) für Markdown/JSON (in VS Code über die jeweiligen Erweiterungen). Dieselben Prüfungen laufen für jeden Pull Request in `.github/workflows/checks.yml`. Von der Kommandozeile:
 
 ```powershell
-.venv\Scripts\python.exe -m pip install ruff
 .venv\Scripts\ruff.exe check .
 .venv\Scripts\ruff.exe format .
+.venv\Scripts\python.exe -m pyright
 
-npx @biomejs/biome check .           # prüfen
-npx @biomejs/biome check --write .   # sichere Korrekturen und Formatierung anwenden
+npx @biomejs/biome@2.6.6 check .           # prüfen (Version wie $schema in biome.json)
+npx @biomejs/biome@2.6.6 check --write .   # sichere Korrekturen und Formatierung anwenden
 ```
 
 ## Verwendung
