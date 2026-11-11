@@ -15,7 +15,7 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 ## Befehle
 
 ```powershell
-.venv\Scripts\python.exe -m pip install -r requirements.txt   # Python 3.15 in .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # Python 3.15 in .venv; enthält requirements.txt
 
 .venv\Scripts\python.exe svg2pdf.py                                      # Defaults C:\Profile\SVG → C:\Profile\PDF
 .venv\Scripts\python.exe svg2pdf.py "<in>" "<out>" --workers 8 --verbose   # Default: 12 Worker
@@ -23,6 +23,7 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 .venv\Scripts\python.exe svg2pdf.py "<in>" "<out>" --min-date "01.01.2024"
 
 .venv\Scripts\ruff.exe check .; .venv\Scripts\ruff.exe format .
+.venv\Scripts\python.exe -m pyright   # Konfiguration in pyrightconfig.json
 npx @biomejs/biome@2.6.6 check .   # Version wie $schema in biome.json
 
 # Smoke-Test (keine Testsuite) – prüft Konvertierung + Strukturerhalt, außerhalb des Repos
@@ -34,7 +35,9 @@ $t = "$env:TEMP\svg2pdf-test"; mkdir -Force "$t\in\unter\tief", "$t\out"
 
 ## Hinweise
 
-- Linting/Formatierung: Ruff für Python (Defaults, kein `ruff.toml`/`pyproject.toml`; CLI im `.venv`, nicht in requirements.txt; die Defaults von Ruff 0.17 enthalten u. a. BLE001/S110), Biome (`biome.json`, Standardregeln) für Markdown/JSON; `.vscode/` ist lokal und nicht versioniert. Reine Formatierungsänderungen getrennt von inhaltlichen committen.
+- Linting/Formatierung: Ruff für Python (Defaults, kein `ruff.toml`/`pyproject.toml`; Version fest in `requirements-dev.txt`; die Defaults von Ruff 0.17 enthalten u. a. BLE001/S110), Biome (`biome.json`, Standardregeln) für Markdown/JSON; `.vscode/` ist lokal und nicht versioniert. Reine Formatierungsänderungen getrennt von inhaltlichen committen.
+- **Typprüfung:** Pyright (Version fest in `requirements-dev.txt`, gemeinsam mit den übrigen InfraGeo-Repositorys anheben), Stufe `standard` in `pyrightconfig.json`, `pythonVersion` 3.15. Ausnahmen nur als `# pyright: ignore[<regel>]` mit Begründung im selben Kommentar, kein pauschales `# type: ignore`. Die Namen aus dem Import-Guard gelten für Pyright als möglicherweise ungebunden; ihre Verwendungen in `convert_single_svg_to_pdf()` tragen deshalb `reportPossiblyUnboundVariable`-Ausnahmen.
+- **CI:** `.github/workflows/checks.yml` prüft jede PR nach `dev`/`main` auf Windows mit Ruff (check, format), Biome (`ci --error-on-warnings`, Version aus `biome.json`) und Pyright, immer den ganzen Bestand. Werkzeugversionen nur in `requirements-dev.txt` ändern.
 - `.gitignore` ist bewusst nicht versioniert (ignoriert sich selbst).
 - Zeilenenden LF (`.gitattributes`), `*.bat` mit CRLF. Python-Skripte, die Dateien schreiben, mit `newline="\n"`.
 - Ablauf: `main()` → `find_svg_files()` (rglob + optionaler Datumsfilter) → `ProcessPoolExecutor` über `process_svg_file()` → `create_output_path()` + `convert_single_svg_to_pdf()`.

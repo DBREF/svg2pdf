@@ -1,0 +1,12 @@
+# Python-Pakete für die Entwicklung von SVG2PDF
+#
+# Ergänzt requirements.txt um Lint und Typprüfung. Die Versionen sind die der CI:
+# .github/workflows/checks.yml installiert aus dieser Datei.
+-r requirements.txt
+
+# Formatierung und Lint (Ruff-Defaults, keine Konfigurationsdatei)
+ruff==0.17.4
+
+# Typprüfung (Konfiguration in pyrightconfig.json). Das Extra "nodejs" bringt die Node-Laufzeit
+# als Python-Paket mit.
+pyright[nodejs]==1.1.414

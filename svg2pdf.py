@@ -73,7 +73,7 @@ def convert_single_svg_to_pdf(
 
     try:
         # SVG laden
-        drawing = svg2rlg(svg_path)
+        drawing = svg2rlg(svg_path)  # pyright: ignore[reportPossiblyUnboundVariable] – Import-Guard, Flag oben geprüft
         if drawing is None:
             return False, svg_filename, "SVG konnte nicht geladen werden"
         if drawing.width <= 0 or drawing.height <= 0:
@@ -81,21 +81,22 @@ def convert_single_svg_to_pdf(
 
         # PDF-Layout-Berechnungen
         page_w, page_h = PAGE_SIZE
-        avail_w = page_w - 2 * MARGIN_MM * mm
-        avail_h = page_h - 2 * MARGIN_MM * mm
+        margin = MARGIN_MM * mm  # pyright: ignore[reportPossiblyUnboundVariable] – Import-Guard, Flag oben geprüft
+        avail_w = page_w - 2 * margin
+        avail_h = page_h - 2 * margin
         scale = min(avail_w / drawing.width, avail_h / drawing.height)
-        x = MARGIN_MM * mm + (avail_w - drawing.width * scale) / 2
-        y = MARGIN_MM * mm + (avail_h - drawing.height * scale) / 2
+        x = margin + (avail_w - drawing.width * scale) / 2
+        y = margin + (avail_h - drawing.height * scale) / 2
 
         # PDF erstellen
         pdf_path_normalized = os.path.normpath(pdf_path)
         os.makedirs(os.path.dirname(pdf_path_normalized), exist_ok=True)
 
-        c = canvas.Canvas(pdf_path_normalized, pagesize=PAGE_SIZE)
+        c = canvas.Canvas(pdf_path_normalized, pagesize=PAGE_SIZE)  # pyright: ignore[reportPossiblyUnboundVariable] – Import-Guard, Flag oben geprüft
         c.saveState()
         c.translate(x, y)
         c.scale(scale, scale)
-        renderPDF.draw(drawing, c, 0, 0)
+        renderPDF.draw(drawing, c, 0, 0)  # pyright: ignore[reportPossiblyUnboundVariable] – Import-Guard, Flag oben geprüft
         c.restoreState()
         c.showPage()
         c.save()
