@@ -1,0 +1,84 @@
+# Ruff, Biome und Pyright für SVG2PDF in einem Job (Vorbild: infralira).
+#
+# Ein Job statt mehrerer Workflows: Jeder Workflow startet einen eigenen Runner, richtet Python neu
+# ein und wird auf eine volle Minute aufgerundet - unter Windows doppelt berechnet. Die Prüfungen
+# selbst dauern nur Sekunden. Jede Prüfung bleibt ein eigener Schritt mit eigenem Ergebnis im Log;
+# `!cancelled()` sorgt dafür, dass ein roter Schritt die folgenden nicht überspringt, sodass eine
+# PR alle Befunde auf einmal sieht.
+#
+# Windows statt Linux, weil SVG2PDF für Windows ausgelegt ist (pythonPlatform in
+# pyrightconfig.json).
+#
+# Geprüft wird der gesamte Bestand, nicht nur die geänderten Dateien. Eine Testsuite gibt es nicht.
+
+name: Prüfungen
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+# Mehrere Pushes kurz hintereinander sollen nicht mehrere Läufe nebeneinander offen halten - nur
+# das Ergebnis des letzten Standes zählt.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: Ruff, Biome, Pyright
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Abhängigkeiten installieren
+        id: install
+        # Alle Werkzeugversionen aus requirements-dev.txt (enthält requirements.txt) und damit
+        # dieselben wie im lokalen .venv. Ohne Festlegung könnte hier eine neuere Fassung mit
+        # zusätzlichen Regeln laufen und eine PR ablehnen, die lokal sauber war.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      # --- Ruff ---------------------------------------------------------------------------------
+      - name: ruff check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: python -m ruff check --output-format=github .
+
+      - name: ruff format --check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: python -m ruff format --check --diff .
+
+      # --- Biome --------------------------------------------------------------------------------
+      #
+      # Die Version steht genau einmal im Repository: im $schema von biome.json. `biome ci`
+      # prüft Formatierung und Lint ohne zu schreiben; --error-on-warnings macht auch Warnungen
+      # zu Fehlern, weil der Bestand warnungsfrei ist.
+      - name: Biome
+        if: ${{ !cancelled() }}
+        run: |
+          BIOME_VERSION=$(grep -oP 'schemas/\K[0-9.]+(?=/schema\.json)' biome.json)
+          echo "Biome ${BIOME_VERSION}"
+          npx --yes "@biomejs/biome@${BIOME_VERSION}" ci --error-on-warnings .
+
+      # --- Pyright ------------------------------------------------------------------------------
+      #
+      # --pythonpath statt des .venv aus pyrightconfig.json: Auf dem Runner sind die Pakete in
+      # das Python von setup-python installiert.
+      - name: Pyright
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: python -m pyright --pythonpath "$(python -c 'import sys; print(sys.executable)')"
