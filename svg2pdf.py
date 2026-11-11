@@ -23,13 +23,11 @@ import multiprocessing as mp
 import os
 import sys
 import time
-
-# --- Drittanbieter-Bibliotheken ---
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import BrokenExecutor, ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-# PDF-Bibliotheken
+# --- Drittanbieter-Bibliotheken (PDF) ---
 try:
     from reportlab.graphics import renderPDF
     from reportlab.lib.pagesizes import A4
@@ -50,6 +48,9 @@ except ImportError as e:
     # Fallback-Werte
     MARGIN_MM = 10
     PAGE_SIZE = (595.276, 841.890)  # A4-Größe in Punkten
+
+# ProcessPoolExecutor erlaubt unter Windows höchstens 61 Worker-Prozesse
+MAX_WORKERS = 61 if sys.platform == "win32" else 1024
 
 
 def convert_single_svg_to_pdf(
@@ -75,6 +76,8 @@ def convert_single_svg_to_pdf(
         drawing = svg2rlg(svg_path)
         if drawing is None:
             return False, svg_filename, "SVG konnte nicht geladen werden"
+        if drawing.width <= 0 or drawing.height <= 0:
+            return False, svg_filename, "SVG hat keine gültige Breite/Höhe"
 
         # PDF-Layout-Berechnungen
         page_w, page_h = PAGE_SIZE
@@ -102,10 +105,12 @@ def convert_single_svg_to_pdf(
         del drawing
         gc.collect()
 
-        return True, svg_filename, None
-
-    except Exception as e:
+    # Worker dürfen nie werfen: jeder Fehler wird als Ergebnis zurückgegeben,
+    # damit eine fehlerhafte Datei den Pool nicht abbricht
+    except Exception as e:  # noqa: BLE001
         return False, svg_filename, str(e)
+    else:
+        return True, svg_filename, None
 
 
 def find_svg_files(
@@ -149,8 +154,9 @@ def find_svg_files(
                     if file_date < min_date:
                         filtered_count += 1
                         continue  # Datei ist zu alt, überspringen
-                except Exception:
-                    # Bei Problemen mit Dateidatum, Datei einschließen
+                except (AttributeError, OSError, OverflowError, ValueError):
+                    # Erstellungsdatum nicht ermittelbar (z. B. kein st_birthtime
+                    # vor Python 3.12 unter Windows): Datei einschließen
                     pass
 
             relative_path = svg_file.relative_to(input_path)
@@ -201,7 +207,7 @@ def process_svg_file(args: tuple[str, str, str]) -> tuple[bool, str, str | None]
     return convert_single_svg_to_pdf(svg_path, pdf_path)
 
 
-def main():
+def main() -> None:
     """Hauptfunktion des SVG-zu-PDF-Konverters."""
     parser = argparse.ArgumentParser(
         description="Konvertiert SVG-Dateien zu PDF-Dateien mit Multiprocessing",
@@ -233,8 +239,8 @@ Beispiele:
     parser.add_argument(
         "--min-date",
         type=str,
-        default="01.01.1900",
-        help="Minimales Erstellungsdatum (DD.MM.YYYY) für SVG-Dateien (Standard: 01.01.1900)",
+        default=None,
+        help="Minimales Erstellungsdatum (DD.MM.YYYY) für SVG-Dateien (Standard: alle)",
     )
 
     parser.add_argument(
@@ -242,7 +248,7 @@ Beispiele:
         "-w",
         type=int,
         default=12,
-        help="Anzahl paralleler Worker-Prozesse (Standard: 12)",
+        help=f"Anzahl paralleler Worker-Prozesse (1-{MAX_WORKERS}, Standard: 12)",
     )
 
     parser.add_argument(
@@ -270,9 +276,13 @@ Beispiele:
         print(f"❌ Fehler: Eingabepfad ist kein Verzeichnis: {args.input_dir}")
         sys.exit(1)
 
+    if not 1 <= args.workers <= MAX_WORKERS:
+        print(f"❌ Ungültige Worker-Anzahl: {args.workers} (erlaubt: 1-{MAX_WORKERS})")
+        sys.exit(1)
+
     # Datumsfilter verarbeiten
     min_date = None
-    if args.min_date != "01.01.1900":
+    if args.min_date is not None:
         try:
             min_date = datetime.strptime(args.min_date, "%d.%m.%Y")
             print(f"🗓️ Datumsfilter: Nur SVG-Dateien ab {args.min_date}")
@@ -280,13 +290,13 @@ Beispiele:
             print(f"❌ Ungültiges Datumsformat: {args.min_date} (erwartet: DD.MM.YYYY)")
             sys.exit(1)
     else:
-        print(f"🗓️ Datumsfilter: Alle SVG-Dateien (ab {args.min_date})")
+        print("🗓️ Datumsfilter: Alle SVG-Dateien")
 
     # SVG-Dateien finden
     print(f"🔍 Suche SVG-Dateien in: {args.input_dir}")
     try:
         svg_files = find_svg_files(args.input_dir, min_date)
-    except Exception as e:
+    except OSError as e:
         print(f"❌ Fehler beim Durchsuchen des Verzeichnisses: {e}")
         sys.exit(1)
 
@@ -298,7 +308,7 @@ Beispiele:
 
     if args.verbose:
         print("\nGefundene SVG-Dateien:")
-        for svg_path, rel_path in svg_files[:10]:  # Erste 10 anzeigen
+        for _, rel_path in svg_files[:10]:  # Erste 10 anzeigen
             print(f"  📄 {rel_path}")
         if len(svg_files) > 10:
             print(f"  ... und {len(svg_files) - 10} weitere")
@@ -306,9 +316,6 @@ Beispiele:
     # Pfad-Informationen anzeigen
     print(f"📂 Eingabepfad: {args.input_dir}")
     print(f"📁 Ausgabepfad: {args.output_dir}")
-
-    # Ausgabeverzeichnis erstellen
-    os.makedirs(args.output_dir, exist_ok=True)
 
     if args.dry_run:
         print(f"\n🔍 Dry-Run Modus: Würde {len(svg_files)} Dateien konvertieren")
@@ -319,12 +326,15 @@ Beispiele:
         # Beispiel der Ordnerstruktur-Erhaltung zeigen
         if svg_files and args.verbose:
             print("\n📁 Beispiel Ordnerstruktur-Erhaltung:")
-            for i, (svg_path, rel_path) in enumerate(svg_files[:3]):
+            for _, rel_path in svg_files[:3]:
                 pdf_rel_path = str(Path(rel_path).with_suffix(".pdf"))
                 print(f"   📄 {rel_path} → {pdf_rel_path}")
             if len(svg_files) > 3:
                 print(f"   ... und {len(svg_files) - 3} weitere")
         return
+
+    # Ausgabeverzeichnis erstellen (nicht im Dry-Run)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # Konvertierung starten
     print(f"\n🚀 Starte Konvertierung mit {args.workers} Worker-Prozessen...")
@@ -338,44 +348,49 @@ Beispiele:
     failed = 0
     start_time = time.time()
 
+    executor = ProcessPoolExecutor(max_workers=args.workers)
     try:
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            # Alle Tasks starten
-            future_to_svg = {
-                executor.submit(process_svg_file, arg): arg[1] for arg in worker_args
-            }
+        # Alle Tasks starten
+        future_to_svg = {
+            executor.submit(process_svg_file, arg): arg[1] for arg in worker_args
+        }
 
-            # Ergebnisse sammeln
-            for future in as_completed(future_to_svg):
-                rel_path = future_to_svg[future]
-                try:
-                    success, filename, error = future.result()
-                    if success:
-                        successful += 1
-                        if args.verbose:
-                            print(f"✅ {filename}")
-                    else:
-                        failed += 1
-                        print(f"❌ {filename}: {error}")
-
-                    # Fortschritt anzeigen
-                    total_processed = successful + failed
-                    if total_processed % 10 == 0 or total_processed == len(svg_files):
-                        progress = (total_processed / len(svg_files)) * 100
-                        elapsed = time.time() - start_time
-                        rate = total_processed / elapsed if elapsed > 0 else 0
-                        print(
-                            f"📊 Fortschritt: {total_processed}/{len(svg_files)} ({progress:.1f}%) - {rate:.1f} Dateien/s"
-                        )
-
-                except Exception as e:
+        # Ergebnisse sammeln
+        for future in as_completed(future_to_svg):
+            rel_path = future_to_svg[future]
+            try:
+                success, _, error = future.result()
+            except BrokenExecutor as e:
+                # Worker-Prozess abgestürzt (z. B. Speichermangel)
+                failed += 1
+                print(f"❌ {rel_path}: Worker-Prozess abgebrochen: {e}")
+            else:
+                if success:
+                    successful += 1
+                    if args.verbose:
+                        print(f"✅ {rel_path}")
+                else:
                     failed += 1
-                    print(f"❌ {rel_path}: Unerwarteter Fehler: {e}")
+                    print(f"❌ {rel_path}: {error}")
+
+            # Fortschritt anzeigen
+            total_processed = successful + failed
+            if total_processed % 10 == 0 or total_processed == len(svg_files):
+                progress = (total_processed / len(svg_files)) * 100
+                elapsed = time.time() - start_time
+                rate = total_processed / elapsed if elapsed > 0 else 0
+                print(
+                    f"📊 Fortschritt: {total_processed}/{len(svg_files)} ({progress:.1f}%) - {rate:.1f} Dateien/s"
+                )
 
     except KeyboardInterrupt:
+        # Ausstehende Tasks verwerfen, statt auf alle zu warten
+        executor.shutdown(wait=False, cancel_futures=True)
         print("\n⚠️ Konvertierung durch Benutzer abgebrochen!")
         print(f"📊 Status: {successful} erfolgreich, {failed} fehlgeschlagen")
         sys.exit(1)
+    finally:
+        executor.shutdown(wait=True)
 
     # Ergebnis anzeigen
     end_time = time.time()
@@ -390,7 +405,8 @@ Beispiele:
     print(
         f"   ❌ Fehlgeschlagen: {failed}/{total_files} ({failed / total_files * 100:.1f}%)"
     )
-    print(f"⏱️ Dauer: {duration:.1f} Sekunden ({successful / duration:.1f} PDF/s)")
+    rate = successful / duration if duration > 0 else 0
+    print(f"⏱️ Dauer: {duration:.1f} Sekunden ({rate:.1f} PDF/s)")
     print(f"📁 PDF-Dateien gespeichert in: {args.output_dir}")
 
     if failed > 0:

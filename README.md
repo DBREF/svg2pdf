@@ -72,8 +72,8 @@ Hinweis: `svglib` installiert ein gleichnamiges Programm `svg2pdf`. Im aktiviert
 | ------------ | ---- | ---------------- | --------------------------------------------- |
 | `input_dir`  | –    | `C:\Profile\SVG` | Eingabeverzeichnis mit SVG-Dateien (rekursiv) |
 | `output_dir` | –    | `C:\Profile\PDF` | Ausgabeverzeichnis für PDF-Dateien            |
-| `--min-date` | –    | `01.01.1900`     | Minimales Erstellungsdatum (TT.MM.JJJJ)       |
-| `--workers`  | `-w` | `12`             | Anzahl paralleler Worker-Prozesse             |
+| `--min-date` | –    | _(alle)_         | Minimales Erstellungsdatum (TT.MM.JJJJ)       |
+| `--workers`  | `-w` | `12`             | Anzahl paralleler Worker-Prozesse (1–61)      |
 | `--verbose`  | `-v` | –                | Detaillierte Ausgabe                          |
 | `--dry-run`  | –    | –                | Nur Vorschau, keine Konvertierung             |
 
