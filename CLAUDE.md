@@ -6,7 +6,7 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 
 - Englische Bezeichner für Dateinamen, Funktionen, Methoden, Klassen und Variablen (Eigennamen ausgenommen). Bestehende deutsche Bezeichner nicht nebenbei umbenennen; eine Umstellung erfolgt ggf. separat und geplant.
 - Branches: `dev` ist der Entwicklungszweig (Default auf GitHub), `main` erhält nur Releases. Nach `dev` wird nur per PR gemergt; direkte Commits nur im Ausnahmefall.
-- Grundsätzlich in Git-Worktrees arbeiten. Ablage unter `.claude/worktrees/<name>` (ignoriert): `git worktree add .claude/worktrees/<name> -b <branch> origin/dev`. `EnterWorktree` scheitert hier an der Schreibweise des Laufwerks (`e:` vs. `E:`).
+- Grundsätzlich in Git-Worktrees arbeiten. Ablage unter `.claude/worktrees/<name>` (ignoriert): `git worktree add .claude/worktrees/<name> -b <branch> origin/dev`, danach `.gitignore` hineinkopieren (nur lokal, nicht versioniert). `EnterWorktree` scheitert hier an der Schreibweise des Laufwerks (`e:` vs. `E:`). PR: `gh pr create --base dev`. Nach dem Merge: `git worktree remove …` (scheitert mit „Permission denied“, solange VS Code den Ordner offen hat – dann Ordner später löschen), Branch lokal und remote löschen.
 - Claude wird weder in Kommentaren erwähnt noch als Co-Autor eingetragen.
 - Issues und PRs dürfen in Quelltext-Kommentaren genannt werden.
 - Projektsprache Deutsch (Kommentare, Docstrings, Doku, Ausgaben) mit korrekten Umlauten.
@@ -22,16 +22,20 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 .venv\Scripts\python.exe svg2pdf.py "<in>" "<out>" --dry-run
 .venv\Scripts\python.exe svg2pdf.py "<in>" "<out>" --min-date "01.01.2024"
 
-# Smoke-Test (keine Testsuite) – prüft Konvertierung + Strukturerhalt
-mkdir -Force tmp\in\unter\tief, tmp\out
-'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"><rect width="100" height="50" fill="#36c"/></svg>' | Set-Content tmp\in\unter\tief\test.svg
-.venv\Scripts\python.exe svg2pdf.py tmp\in tmp\out --workers 2 --verbose
-# erwartet: tmp\out\unter\tief\test.pdf
+.venv\Scripts\ruff.exe check .; .venv\Scripts\ruff.exe format .
+npx @biomejs/biome@2.6.6 check .   # Version wie $schema in biome.json
+
+# Smoke-Test (keine Testsuite) – prüft Konvertierung + Strukturerhalt, außerhalb des Repos
+$t = "$env:TEMP\svg2pdf-test"; mkdir -Force "$t\in\unter\tief", "$t\out"
+'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"><rect width="100" height="50" fill="#36c"/></svg>' | Set-Content "$t\in\unter\tief\test.svg"
+.venv\Scripts\python.exe svg2pdf.py "$t\in" "$t\out" --workers 2 --verbose
+# erwartet: $t\out\unter\tief\test.pdf
 ```
 
 ## Hinweise
 
-- Linting/Formatierung: Ruff für Python (Defaults, kein `ruff.toml`/`pyproject.toml`; CLI nicht im `.venv` – ggf. `pip install ruff`), Biome (`biome.json`, Standardregeln) für Markdown/JSON; `.vscode/` ist lokal und nicht versioniert. Reine Formatierungsänderungen getrennt von inhaltlichen committen.
+- Linting/Formatierung: Ruff für Python (Defaults, kein `ruff.toml`/`pyproject.toml`; CLI im `.venv`, nicht in requirements.txt; die Defaults von Ruff 0.17 enthalten u. a. BLE001/S110), Biome (`biome.json`, Standardregeln) für Markdown/JSON; `.vscode/` ist lokal und nicht versioniert. Reine Formatierungsänderungen getrennt von inhaltlichen committen.
+- `.gitignore` ist bewusst nicht versioniert (ignoriert sich selbst).
 - Zeilenenden LF (`.gitattributes`), `*.bat` mit CRLF. Python-Skripte, die Dateien schreiben, mit `newline="\n"`.
 - Ablauf: `main()` → `find_svg_files()` (rglob + optionaler Datumsfilter) → `ProcessPoolExecutor` über `process_svg_file()` → `create_output_path()` + `convert_single_svg_to_pdf()`.
 - **Import-Guard:** `reportlab`/`svglib` werden in `try/except ImportError` importiert, das zugleich `LIBRARIES_AVAILABLE`, `MARGIN_MM` und `PAGE_SIZE` setzt. Neue Layout-Konstanten gehören in **beide** Zweige. `convert_single_svg_to_pdf()` prüft das Flag erneut, weil bei `spawn` jeder Worker das Modul neu importiert.
