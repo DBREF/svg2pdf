@@ -7,7 +7,8 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 - Englische Bezeichner für Dateinamen, Funktionen, Methoden, Klassen und Variablen (Eigennamen ausgenommen). Bestehende deutsche Bezeichner nicht nebenbei umbenennen; eine Umstellung erfolgt ggf. separat und geplant.
 - Branches: `dev` ist der Entwicklungszweig (Default auf GitHub), `main` erhält nur Releases. Nach `dev` wird nur per PR gemergt; direkte Commits nur im Ausnahmefall.
 - Grundsätzlich in Git-Worktrees arbeiten. Ablage unter `.claude/worktrees/<name>` (ignoriert): `git worktree add .claude/worktrees/<name> -b <branch> origin/dev`, danach `.gitignore` hineinkopieren (nur lokal, nicht versioniert). `EnterWorktree` scheitert hier an der Schreibweise des Laufwerks (`e:` vs. `E:`). PR: `gh pr create --base dev`. Nach dem Merge: `git worktree remove …` (scheitert mit „Permission denied“, solange VS Code den Ordner offen hat – dann Ordner später löschen), Branch lokal und remote löschen.
-- Claude wird weder in Kommentaren erwähnt noch als Co-Autor eingetragen.
+- Claude wird weder in Kommentaren erwähnt noch als Co-Autor eingetragen; `.claude/settings.json` schaltet die Signaturen von Claude Code ab (`attribution`).
+- Biome heißt auf npm `@biomejs/biome` und wird immer als `npx @biomejs/biome@<Version>` aufgerufen (Version wie `$schema` in `biome.json`). Nie `npx biome`, `npm i biome` o. ä.: Ohne lokales `node_modules/` holt das das fremde Paket `biome` (0.3.3) und führt zu Fehlern. `.claude/settings.json` sperrt diese Aufrufe.
 - Issues und PRs dürfen in Quelltext-Kommentaren genannt werden.
 - Projektsprache Deutsch (Kommentare, Docstrings, Doku, Ausgaben) mit korrekten Umlauten.
 - Repository ist öffentlich → MIT-Lizenz (`LICENSE`).

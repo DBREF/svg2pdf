@@ -1,0 +1,32 @@
+{
+	"attribution": {
+		"commit": "",
+		"pr": ""
+	},
+	"permissions": {
+		"deny": [
+			"Bash(npx biome*)",
+			"Bash(npx -y biome*)",
+			"Bash(npx --yes biome*)",
+			"Bash(npm exec biome*)",
+			"Bash(npm i biome*)",
+			"Bash(npm i -D biome*)",
+			"Bash(npm i -g biome*)",
+			"Bash(npm install biome*)",
+			"Bash(npm install -D biome*)",
+			"Bash(npm install -g biome*)",
+			"Bash(npm install --save-dev biome*)",
+			"PowerShell(npx biome*)",
+			"PowerShell(npx -y biome*)",
+			"PowerShell(npx --yes biome*)",
+			"PowerShell(npm exec biome*)",
+			"PowerShell(npm i biome*)",
+			"PowerShell(npm i -D biome*)",
+			"PowerShell(npm i -g biome*)",
+			"PowerShell(npm install biome*)",
+			"PowerShell(npm install -D biome*)",
+			"PowerShell(npm install -g biome*)",
+			"PowerShell(npm install --save-dev biome*)"
+		]
+	}
+}
