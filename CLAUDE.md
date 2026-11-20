@@ -26,7 +26,7 @@ SVG2PDF: eigenständiges CLI-Tool zur Stapelkonvertierung von SVG- zu PDF-Dateie
 
 .venv\Scripts\ruff.exe check .; .venv\Scripts\ruff.exe format .
 .venv\Scripts\python.exe -m pyright   # Konfiguration in pyrightconfig.json
-npx @biomejs/biome@2.6.6 check .   # Version wie $schema in biome.json
+npx @biomejs/biome@2.6.8 check .   # Version wie $schema in biome.json
 
 # Smoke-Test (keine Testsuite) – prüft Konvertierung + Strukturerhalt, außerhalb des Repos
 $t = "$env:TEMP\svg2pdf-test"; mkdir -Force "$t\in\unter\tief", "$t\out"
